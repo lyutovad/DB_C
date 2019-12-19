@@ -1,0 +1,43 @@
+/* 1. Проанализировать какие запросы могут выполняться наиболее часто в процессе работы приложения и добавить необходимые индексы.*/
+
+CREATE UNIQUE INDEX users_email_uq ON users(email);
+
+CREATE INDEX media_user_id_media_type_id_idx ON media(user_id, media_type_id);
+
+-- Мне кажется, могут быть частыми запросы, связанные с городом проживания пользователя
+
+CREATE INDEX profiles_hometown_idx ON profiles(hometown);
+
+-- Зпросы на сообщества пользователя
+
+CREATE INDEX community_users_user_id_community_id_idx ON community_users(user_id, community_id);
+
+-- Дружба и статусы
+
+CREATE INDEX friendship_friend_id_status_id_idx ON friendship(friend_id, status_id);
+
+
+/* 2. Задание на оконные функции
+Построить запрос, который будет выводить следующие столбцы:
+имя группы
+среднее количество пользователей в группах
+самый молодой пользователь в группе
+самый пожилой пользователь в группе
+общее количество пользователей в группе
+всего пользователей в системе
+отношение в процентах (общее количество пользователей в группе / всего пользователей в системе) * 100 */
+
+SELECT DISTINCT communities.name, 
+  AVG(communities_users.user_id) OVER() AS average,
+  MAX(profiles.birthday) OVER w AS youngest_member,
+  MIN(profiles.birthday) OVER w AS oldest_member,
+  COUNT(communities_users.user_id) OVER(PARTITION BY communities.name) AS total_users_per_group,
+  COUNT(communities_users.user_id) OVER () AS total_users_in_system,
+  COUNT(communities_users.user_id) OVER w / COUNT(communities_users.user_id) OVER () * 100 AS "%%"
+      FROM communities_users
+      JOIN communities
+        ON communities_users.community_id = communities.id
+      JOIN profiles
+        ON communities_users.user_id = profiles.user_id
+         WINDOW w AS (PARTITION BY communities.name);
+
